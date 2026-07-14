@@ -20,6 +20,7 @@
   <!-- Libraries (loaded via CDN) -->
   <script src="https://unpkg.com/force-graph"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/jlouvain@1.0.0/jLouvain.js"></script>
   
   <!-- Leaflet Map Library -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -168,10 +169,6 @@
           <i class="fa-solid fa-newspaper"></i>
           <span>Koran Explorer</span>
         </button>
-        <button id="nav-analytics-btn" class="nav-item">
-          <i class="fa-solid fa-chart-line"></i>
-          <span>Analisis Statistik</span>
-        </button>
       </nav>
       
       <!-- Stats Overview -->
@@ -202,13 +199,13 @@
         <span class="loading-progress" id="loading-progress">0%</span>
       </div>
 
-      <!-- SECTION 1: NETWORK VIEW -->
-      <section id="workspace-network" class="workspace-section active">
-        <div class="section-controls">
-          <div class="control-left">
+      <!-- SHARED CONTROLS -->
+      <div class="section-controls" style="margin-bottom: 16px;">
+        <div class="control-left">
             <button id="net-mode-author-btn" class="btn btn-tab active">Co-Authorship</button>
             <button id="net-mode-keyword-btn" class="btn btn-tab">Keyword Co-occurrence</button>
             <button id="net-mode-map-btn" class="btn btn-tab" style="display: none;"><i class="fa-solid fa-earth-asia"></i> World Map</button>
+            <button id="net-mode-cluster-btn" class="btn btn-tab" style="margin-left: 10px; background: rgba(168, 85, 247, 0.1); color: #a855f7; border-color: rgba(168, 85, 247, 0.3);"><i class="fa-solid fa-circle-nodes"></i> VOSviewer Clustering</button>
           </div>
           
           <div class="control-right">
@@ -216,10 +213,13 @@
               <label for="node-freq-slider">Min. Frekuensi: <span id="freq-val">3</span></label>
               <input type="range" id="node-freq-slider" min="1" max="15" value="3">
             </div>
+            <button id="toggle-analytics-btn" class="btn btn-secondary" style="margin-right: 10px;"><i class="fa-solid fa-chart-pie"></i> Analitik</button>
             <button id="fit-graph-btn" class="btn btn-icon-only" title="Fit Graph"><i class="fa-solid fa-expand"></i></button>
           </div>
-        </div>
+      </div>
 
+      <!-- SECTION 1: NETWORK VIEW -->
+      <section id="workspace-network" class="workspace-section active">
         <div class="network-canvas-container">
           <div id="network-graph-canvas"></div>
           <div id="map-container" style="display: none; height: 100%; width: 100%; border-radius: 12px; overflow: hidden; background-color: #0b0f19;"></div>
@@ -245,14 +245,6 @@
 
       <!-- SECTION 2: ANALYTICS VIEW -->
       <section id="workspace-analytics" class="workspace-section">
-        <div class="section-controls" style="margin-bottom: 20px;">
-          <div class="control-left">
-            <button id="analytics-etd-btn" class="btn btn-tab active">Statistik ETD</button>
-            <button id="analytics-publikasi-btn" class="btn btn-tab">Statistik Publikasi</button>
-            <button id="analytics-koran-btn" class="btn btn-tab">Statistik Koran</button>
-          </div>
-        </div>
-        
         <div class="analytics-grid">
           
           <!-- Row 1: Publication Trend -->
@@ -324,6 +316,6 @@
   </footer>
 
   <!-- Main JavaScript Application Logic -->
-  <script src="app.js?v=1.2"></script>
+  <script src="app.js?v=1.3"></script>
 </body>
 </html>

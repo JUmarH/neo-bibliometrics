@@ -94,8 +94,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const navEtdBtn = document.getElementById('nav-etd-btn');
   const navPubBtn = document.getElementById('nav-publikasi-btn');
   const navKoranBtn = document.getElementById('nav-koran-btn');
-  const navAnalyticsBtn = document.getElementById('nav-analytics-btn');
-  
+    
   // Sub-filter wrappers
   const subEtdSection = document.getElementById('sub-filters-etd');
   const subPubSection = document.getElementById('sub-filters-publikasi');
@@ -148,6 +147,30 @@ document.addEventListener('DOMContentLoaded', () => {
     navEtdBtn.addEventListener('click', () => switchExplorer('etd'));
     navPubBtn.addEventListener('click', () => switchExplorer('sivitas'));
     navKoranBtn.addEventListener('click', () => switchExplorer('koran'));
+    
+    const toggleAnalyticsBtn = document.getElementById('toggle-analytics-btn');
+    toggleAnalyticsBtn.addEventListener('click', () => {
+       if (activeTab === 'network') {
+          activeTab = 'analytics';
+          toggleAnalyticsBtn.innerHTML = '<i class="fa-solid fa-network-wired"></i> Jejaring';
+          toggleAnalyticsBtn.classList.add('active');
+          sectionNetwork.style.display = 'none';
+          sectionAnalytics.style.display = 'flex';
+          if (graphInstance) {
+             graphInstance.pauseAnimation();
+          }
+          renderCharts();
+       } else {
+          activeTab = 'network';
+          toggleAnalyticsBtn.innerHTML = '<i class="fa-solid fa-chart-pie"></i> Analitik';
+          toggleAnalyticsBtn.classList.remove('active');
+          sectionAnalytics.style.display = 'none';
+          sectionNetwork.style.display = 'flex';
+          if (graphInstance) {
+             graphInstance.resumeAnimation();
+          }
+       }
+    });
     navAnalyticsBtn.addEventListener('click', () => switchTab('analytics'));
     
     // Analytics sub-tabs
@@ -192,6 +215,25 @@ document.addEventListener('DOMContentLoaded', () => {
     netModeAuthorBtn.addEventListener('click', () => switchNetworkMode('author'));
     netModeKeywordBtn.addEventListener('click', () => switchNetworkMode('keyword'));
     netModeMapBtn.addEventListener('click', () => switchNetworkMode('map'));
+    
+    const netModeClusterBtn = document.getElementById('net-mode-cluster-btn');
+    netModeClusterBtn.addEventListener('click', () => {
+       clusterMode = !clusterMode;
+       if (clusterMode) {
+          netModeClusterBtn.classList.add('active');
+          netModeClusterBtn.innerHTML = '<i class="fa-solid fa-circle-nodes"></i> Default Colors';
+          netModeClusterBtn.style.background = '#a855f7';
+          netModeClusterBtn.style.color = 'white';
+       } else {
+          netModeClusterBtn.classList.remove('active');
+          netModeClusterBtn.innerHTML = '<i class="fa-solid fa-circle-nodes"></i> VOSviewer Clustering';
+          netModeClusterBtn.style.background = 'rgba(168, 85, 247, 0.1)';
+          netModeClusterBtn.style.color = '#a855f7';
+       }
+       if (activeTab === 'network' && networkMode !== 'map') {
+          renderNetwork();
+       }
+    });
     nodeFreqSlider.addEventListener('input', () => {
       freqValLabel.textContent = nodeFreqSlider.value;
       renderNetwork();
@@ -883,6 +925,24 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     
+    // Calculate VOSviewer Clustering (Louvain)
+    if (typeof jLouvain !== 'undefined') {
+        const nodeIds = graphData.nodes.map(n => n.id);
+        const edgeData = graphData.links.map(l => ({ source: l.source, target: l.target, weight: l.weight }));
+        try {
+            const community = jLouvain().nodes(nodeIds).edges(edgeData);
+            const result = community();
+            graphData.nodes.forEach(n => {
+                n.cluster = result[n.id] || 0;
+            });
+        } catch(e) {
+            console.error('Clustering error:', e);
+            graphData.nodes.forEach(n => n.cluster = 0);
+        }
+    } else {
+        graphData.nodes.forEach(n => n.cluster = 0);
+    }
+    
     // Theme Colors
     const isDark = document.body.classList.contains('dark-mode');
     const nodeTextColor = isDark ? '#f8fafc' : '#0f172a';
@@ -916,6 +976,10 @@ document.addEventListener('DOMContentLoaded', () => {
          return `${node.name}${roleStr} (${node.count} dokumen)`;
       })
       .nodeColor(node => {
+         if (clusterMode) {
+             const clusterColors = ['#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#42d4f4', '#f032e6', '#bfef45', '#fabed4', '#469990', '#dcbeff', '#9A6324', '#fffac8', '#800000', '#aaffc3', '#808000', '#ffd8b1', '#000075', '#a9a9a9'];
+             return clusterColors[node.cluster % clusterColors.length];
+         }
          if (node.source === 'etd' && node.role) {
             if (node.role === 'S1') return sourceColors.etd_s1;
             if (node.role === 'S2') return sourceColors.etd_s2;
@@ -937,7 +1001,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const r = Math.max(2, Math.sqrt(node.val) * 1.5);
         ctx.beginPath();
         ctx.arc(node.x, node.y, r, 0, 2 * Math.PI, false);
-        ctx.fillStyle = sourceColors[node.source] || '#64748b';
+        if (clusterMode) {
+             const clusterColors = ['#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#42d4f4', '#f032e6', '#bfef45', '#fabed4', '#469990', '#dcbeff', '#9A6324', '#fffac8', '#800000', '#aaffc3', '#808000', '#ffd8b1', '#000075', '#a9a9a9'];
+             ctx.fillStyle = clusterColors[node.cluster % clusterColors.length];
+        } else {
+             let c = sourceColors[node.source] || '#64748b';
+             if (node.source === 'etd' && node.role) {
+                if (node.role === 'S1') c = sourceColors.etd_s1;
+                else if (node.role === 'S2') c = sourceColors.etd_s2;
+                else if (node.role === 'S3') c = sourceColors.etd_s3;
+                else if (node.role === 'Dosen') c = sourceColors.etd_dosen;
+             }
+             ctx.fillStyle = c;
+        }
         ctx.fill();
         
         // Draw Glowing border if zoomed in

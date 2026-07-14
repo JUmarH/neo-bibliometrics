@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>ETD Dosen Curator</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #f4f4f5; }
+    h1 { color: #333; }
+    .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+    .controls { margin-bottom: 20px; display: flex; gap: 10px; align-items: center; }
+    input[type="text"] { padding: 8px; width: 300px; }
+    button { padding: 8px 16px; cursor: pointer; background: #3b82f6; color: white; border: none; border-radius: 4px; }
+    button:hover { background: #2563eb; }
+    #dosen-list { max-height: 500px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; }
+    .dosen-item { display: flex; align-items: center; padding: 5px 0; border-bottom: 1px solid #eee; }
+    .dosen-item:last-child { border-bottom: none; }
+    .dosen-item input { margin-right: 10px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>ETD Dosen Curator (Temporary)</h1>
+    <p>Centang nama-nama yang <b>SALAH (Gelar/Bukan Nama Orang)</b>. Nama yang dicentang akan diekspor ke file blacklist.</p>
+    
+    <div class="controls">
+      <input type="text" id="search" placeholder="Cari nama...">
+      <button onclick="exportBlacklist()">Ekspor Blacklist</button>
+      <span id="count-info"></span>
+    </div>
+    
+    <div id="dosen-list">
+      <!-- List will be populated here -->
+    </div>
+  </div>
+
+  <script>
+    let allDosen = [];
+    
+    async function init() {
+      try {
+        const res = await fetch('data/unified_publications.json');
+        const data = await res.json();
+        
+        const dosenSet = new Set();
+        data.forEach(d => {
+          if (d.source === 'etd' && d.authors) {
+            d.authors.forEach((a, i) => {
+              if (i > 0) dosenSet.add(a);
+            });
+          }
+        });
+        
+        allDosen = Array.from(dosenSet).sort();
+        document.getElementById('count-info').textContent = `Total unik: ${allDosen.length} nama.`;
+        renderList(allDosen);
+      } catch (err) {
+        alert("Gagal memuat data json.");
+      }
+    }
+    
+    function renderList(list) {
+      const container = document.getElementById('dosen-list');
+      container.innerHTML = '';
+      list.forEach(name => {
+        const div = document.createElement('div');
+        div.className = 'dosen-item';
+        div.innerHTML = `
+          <input type="checkbox" id="chk-${name}" value="${name}">
+          <label for="chk-${name}">${name}</label>
+        `;
+        container.appendChild(div);
+      });
+    }
+    
+    document.getElementById('search').addEventListener('input', (e) => {
+      const q = e.target.value.toLowerCase();
+      const filtered = allDosen.filter(name => name.toLowerCase().includes(q));
+      renderList(filtered);
+    });
+    
+    function exportBlacklist() {
+      const checked = document.querySelectorAll('input[type="checkbox"]:checked');
+      if (checked.length === 0) {
+        alert("Pilih setidaknya satu nama untuk diblacklist.");
+        return;
+      }
+      
+      const names = Array.from(checked).map(c => c.value);
+      const content = names.join('\\n');
+      
+      const blob = new Blob([content], { type: 'text/plain' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'blacklist_dosen.txt';
+      a.click();
+    }
+    
+    init();
+  </script>
+</body>
+</html>

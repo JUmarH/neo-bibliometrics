@@ -50,8 +50,17 @@ IGNORE_DEGREES_NO_SPACES = {
     'mscsamodrawibawa', 'mscedhimartono', 'sutaryomsc', 'wisnumarthaadiputramsc', 'mscirtyasutami',
     'drkuskridhoambardi', 'drelysusanto', 'profdrpurwosantoso',
     'mpoladmin', 'sh', 'ssos', 'is', 'mpol', 'admin', 'imas', 'mcsecurityanalysis', 'mcybersecanalysis', 'mmktgcoms', 'nurhadi',
-    'mintsec', 'mir', 'mm', 'sikom', 'mkes', 'sos', 'ms', 'si', 'mhep', 'mps', 'ip', 'miop', 'maps', 'mpolsc', 'gdsoc', 'mpp'
+    'mintsec', 'mir', 'mm', 'sikom', 'mkes', 'sos', 'ms', 'si', 'mhep', 'mps', 'ip', 'miop', 'maps', 'mpolsc', 'gdsoc', 'mpp',
+    'dr', 'mda', 'mis', 'msa', 'md', 'sc', 'int', 'stu', 'mls', 'pol', 'sp', 'lit', 'ma', 'phd', 'prof', 'drs', 'drt'
 }
+
+import os
+
+# Load manual blacklist if exists
+if os.path.exists('blacklist_dosen.txt'):
+    with open('blacklist_dosen.txt', 'r', encoding='utf-8') as f:
+        manual_blacklist = {line.strip().lower() for line in f if line.strip()}
+        IGNORE_DEGREES_NO_SPACES.update(manual_blacklist)
 
 # List of known countries for affiliation cleaning
 KNOWN_COUNTRIES = {
