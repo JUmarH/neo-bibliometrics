@@ -171,7 +171,6 @@ document.addEventListener('DOMContentLoaded', () => {
           }
        }
     });
-    navAnalyticsBtn.addEventListener('click', () => switchTab('analytics'));
     
     // Analytics sub-tabs
     const analyticsEtdBtn = document.getElementById('analytics-etd-btn');
@@ -296,7 +295,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (targetBtn) targetBtn.classList.add('active');
     } else {
       activeTab = 'network';
-      navAnalyticsBtn.classList.remove('active');
       sectionAnalytics.style.display = 'none';
       sectionNetwork.style.display = 'flex';
       
@@ -340,7 +338,6 @@ document.addEventListener('DOMContentLoaded', () => {
   function switchTab(tab) {
     activeTab = tab;
     if (tab === 'analytics') {
-      navAnalyticsBtn.classList.add('active');
       [navEtdBtn, navPubBtn, navKoranBtn].forEach(btn => {
         if (btn) btn.classList.remove('active');
       });
