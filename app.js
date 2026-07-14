@@ -979,32 +979,33 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // --- 1. Publication Trend (Line Chart Comparing Datasets) ---
     const yearsMap = {};
-    const minYear = parseInt(filterYearMin.value);
-    const maxYear = parseInt(filterYearMax.value);
-    const query = searchInput.value.trim().toLowerCase();
     
-    const trendDocs = allDocs.filter(d => {
-      if (d.year < minYear || d.year > maxYear) return false;
-      if (query !== '') {
-        const titleMatch = d.title && d.title.toLowerCase().includes(query);
-        const authorMatch = d.authors && d.authors.some(a => a.toLowerCase().includes(query));
-        const keywordMatch = d.keywords && d.keywords.some(k => k.toLowerCase().includes(query));
-        if (!titleMatch && !authorMatch && !keywordMatch) return false;
-      }
-      return true;
-    });
-
-    trendDocs.forEach(d => {
+    filteredDocs.forEach(d => {
       if (!d.year) return;
-      yearsMap[d.year] = yearsMap[d.year] || { total: 0, etd: 0, sivitas: 0, koran: 0 };
+      yearsMap[d.year] = yearsMap[d.year] || { total: 0 };
       yearsMap[d.year].total++;
-      yearsMap[d.year][d.source] = (yearsMap[d.year][d.source] || 0) + 1;
     });
     
     const sortedYears = Object.keys(yearsMap).map(Number).sort((a,b) => a - b);
-    const trendDataETD = sortedYears.map(y => yearsMap[y].etd || 0);
-    const trendDataSivitas = sortedYears.map(y => yearsMap[y].sivitas || 0);
-    const trendDataKoran = sortedYears.map(y => yearsMap[y].koran || 0);
+    const trendData = sortedYears.map(y => yearsMap[y].total || 0);
+    
+    let datasetLabel = '';
+    let dsColor = '';
+    let dsBg = '';
+    
+    if (activeExplorer === 'etd') {
+       datasetLabel = 'Tren Tugas Akhir (ETD)';
+       dsColor = '#06b6d4';
+       dsBg = 'rgba(6, 182, 212, 0.05)';
+    } else if (activeExplorer === 'sivitas') {
+       datasetLabel = 'Tren Publikasi Sivitas';
+       dsColor = '#a855f7';
+       dsBg = 'rgba(168, 85, 247, 0.05)';
+    } else {
+       datasetLabel = 'Tren Koran Digital';
+       dsColor = '#f97316';
+       dsBg = 'rgba(249, 115, 22, 0.05)';
+    }
     
     if (charts.trend) charts.trend.destroy();
     charts.trend = new Chart(document.getElementById('chart-trend'), {
@@ -1013,26 +1014,10 @@ document.addEventListener('DOMContentLoaded', () => {
         labels: sortedYears,
         datasets: [
           {
-            label: 'ETD (Tugas Akhir)',
-            data: trendDataETD,
-            borderColor: '#06b6d4',
-            backgroundColor: 'rgba(6, 182, 212, 0.05)',
-            fill: true,
-            tension: 0.3
-          },
-          {
-            label: 'Publikasi Sivitas',
-            data: trendDataSivitas,
-            borderColor: '#a855f7',
-            backgroundColor: 'rgba(168, 85, 247, 0.05)',
-            fill: true,
-            tension: 0.3
-          },
-          {
-            label: 'Koran Digital',
-            data: trendDataKoran,
-            borderColor: '#f97316',
-            backgroundColor: 'rgba(249, 115, 22, 0.05)',
+            label: datasetLabel,
+            data: trendData,
+            borderColor: dsColor,
+            backgroundColor: dsBg,
             fill: true,
             tension: 0.3
           }
