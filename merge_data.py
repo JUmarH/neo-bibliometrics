@@ -49,7 +49,7 @@ IGNORE_DEGREES_NO_SPACES = {
     'coauthor', 'dan', 'and', 'etal', 'null', 'none', 'nan', 'unknown', 'co', 'msocscpratikno',
     'mscsamodrawibawa', 'mscedhimartono', 'sutaryomsc', 'wisnumarthaadiputramsc', 'mscirtyasutami',
     'drkuskridhoambardi', 'drelysusanto', 'profdrpurwosantoso',
-    'mpoladmin', 'sh', 'ssos', 'is', 'mpol', 'admin', 'imas', 'mcsecurityanalysis', 'nurhadi'
+    'mpoladmin', 'sh', 'ssos', 'is', 'mpol', 'admin', 'imas', 'mcsecurityanalysis', 'mcybersecanalysis', 'mmktgcoms', 'nurhadi'
 }
 
 # List of known countries for affiliation cleaning

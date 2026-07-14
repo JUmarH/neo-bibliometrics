@@ -310,7 +310,7 @@ document.addEventListener('DOMContentLoaded', () => {
       loadingOverlay.style.display = 'flex';
       loadingProgress.textContent = '0%';
       
-      const response = await fetch('data/unified_publications.json');
+      const response = await fetch('data/unified_publications.json?v=' + Date.now());
       if (!response.ok) {
         throw new Error('Gagal mengambil data unified_publications.json');
       }
