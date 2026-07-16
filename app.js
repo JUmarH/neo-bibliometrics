@@ -361,13 +361,16 @@ document.addEventListener('DOMContentLoaded', () => {
                links: currentData.links.map(l => ({ source_id: l.source.id || l.source, target_id: l.target.id || l.target, strength: l.val || l.weight || 1 }))
            }
        };
-       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(vosData, null, 2));
+       const jsonStr = JSON.stringify(vosData, null, 2);
+       const blob = new Blob([jsonStr], { type: "application/json" });
+       const url = URL.createObjectURL(blob);
        const link = document.createElement('a');
-       link.setAttribute("href", dataStr);
-       link.setAttribute("download", `VOSviewer_${activeExplorer}_${new Date().getTime()}.json`);
+       link.href = url;
+       link.download = `VOSviewer_${activeExplorer}_${new Date().getTime()}.json`;
        document.body.appendChild(link);
        link.click();
        link.remove();
+       URL.revokeObjectURL(url);
     });
     
     // Export PDF (SciVal style)

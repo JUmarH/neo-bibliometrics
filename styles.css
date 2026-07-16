@@ -1061,12 +1061,21 @@ body.light-mode .icon-dark {
 }
 
 /* Export Dropdown Styling */
+.export-dropdown::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 0;
+  right: 0;
+  height: 10px;
+}
+
 .export-dropdown:hover .export-menu {
   display: block !important;
 }
 
 .export-menu {
-  padding-top: 5px; /* Ensures the gap is hoverable */
+  padding-top: 0px; /* Removes gap */
 }
 
 .export-menu button:hover {
