@@ -357,7 +357,7 @@ document.addEventListener('DOMContentLoaded', () => {
       loadingOverlay.style.display = 'flex';
       loadingProgress.textContent = '0%';
       
-      const response = await fetch('data/unified_publications.json?v=' + Date.now());
+      const response = await fetch('https://cdn.jsdelivr.net/gh/JUmarH/neo-bibliometrics@main/data/unified_publications.json');
       if (!response.ok) {
         throw new Error('Gagal mengambil data unified_publications.json');
       }
