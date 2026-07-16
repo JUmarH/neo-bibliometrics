@@ -95,6 +95,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const navEtdBtn = document.getElementById('nav-etd-btn');
   const navPubBtn = document.getElementById('nav-publikasi-btn');
   const navKoranBtn = document.getElementById('nav-koran-btn');
+  const navCustomBtn = document.getElementById('nav-custom-btn');
+    
+  // Custom CSV Elements
+  const csvUploadOverlay = document.getElementById('csv-upload-overlay');
+  const csvFileInput = document.getElementById('csv-file-input');
+  const triggerUploadBtn = document.getElementById('trigger-upload-btn');
     
   // Sub-filter wrappers
   const subEtdSection = document.getElementById('sub-filters-etd');
@@ -148,6 +154,7 @@ document.addEventListener('DOMContentLoaded', () => {
     navEtdBtn.addEventListener('click', () => switchExplorer('etd'));
     navPubBtn.addEventListener('click', () => switchExplorer('sivitas'));
     navKoranBtn.addEventListener('click', () => switchExplorer('koran'));
+    navCustomBtn.addEventListener('click', () => switchExplorer('custom'));
     
     const toggleAnalyticsBtn = document.getElementById('toggle-analytics-btn');
     toggleAnalyticsBtn.addEventListener('click', () => {
@@ -265,6 +272,144 @@ document.addEventListener('DOMContentLoaded', () => {
     if (activeTab === 'analytics') {
       renderCharts();
     }
+    
+    // Custom CSV Upload Logic
+    triggerUploadBtn.addEventListener('click', () => {
+      csvFileInput.click();
+    });
+    
+    csvFileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      triggerUploadBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...';
+      triggerUploadBtn.disabled = true;
+      
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: function(results) {
+          const rawData = results.data;
+          
+          // Convert to Neo-Bibliometrics JSON Format
+          const processedData = rawData.map((row, idx) => {
+            // Support both "Authors" (Scopus) or "authors" 
+            const authorStr = row['Authors'] || row['authors'] || row['Author'] || row['Penulis'] || 'Unknown';
+            const yearStr = row['Year'] || row['year'] || row['Tahun'] || new Date().getFullYear();
+            const titleStr = row['Title'] || row['title'] || row['Judul'] || `Document ${idx+1}`;
+            const sourceStr = row['Source title'] || row['Source'] || row['Journal'] || 'Custom Dataset';
+            
+            // Split authors by common delimiters
+            let delimiter = ',';
+            if (authorStr.includes(';')) delimiter = ';';
+            
+            const authorList = authorStr.split(delimiter).map(a => {
+               return { name: a.trim() };
+            }).filter(a => a.name !== '');
+            
+            return {
+              id: `csv-${idx}`,
+              title: titleStr.trim(),
+              authors: authorList,
+              year: parseInt(yearStr) || 2024,
+              source: sourceStr,
+              abstract: row['Abstract'] || row['abstract'] || '',
+              keywords: row['Author Keywords'] || row['Keywords'] || row['Index Keywords'] || ''
+            };
+          });
+          
+          window.customDataset = processedData;
+          
+          // Hide overlay, reset button, and apply data
+          csvUploadOverlay.style.display = 'none';
+          triggerUploadBtn.innerHTML = '<i class="fa-solid fa-folder-open"></i> Pilih File CSV';
+          triggerUploadBtn.disabled = false;
+          
+          // Switch to local data source and refresh
+          globalData = window.customDataset;
+          applyFilters();
+        },
+        error: function(err) {
+          console.error("CSV Parse Error:", err);
+          alert("Gagal memproses file CSV: " + err.message);
+          triggerUploadBtn.innerHTML = '<i class="fa-solid fa-folder-open"></i> Pilih File CSV';
+          triggerUploadBtn.disabled = false;
+        }
+      });
+    });
+    
+    // --- EXPORT LOGIC ---
+    // Export PNG
+    document.getElementById('export-png-btn').addEventListener('click', () => {
+       const target = activeTab === 'network' ? document.getElementById('workspace-network') : document.getElementById('workspace-analytics');
+       html2canvas(target, { backgroundColor: '#0f172a' }).then(canvas => {
+           const link = document.createElement('a');
+           link.download = `NeoBiblio_Export_${activeExplorer}_${new Date().getTime()}.png`;
+           link.href = canvas.toDataURL();
+           link.click();
+       });
+    });
+    
+    // Export JSON (VOSviewer format)
+    document.getElementById('export-json-btn').addEventListener('click', () => {
+       if (!graphData || !graphData.nodes) return alert("Tidak ada data untuk diekspor");
+       const vosData = {
+           network: {
+               items: graphData.nodes.map(n => ({ id: n.id, label: n.label || n.id, cluster: n.group, weight: n.val })),
+               links: graphData.links.map(l => ({ source_id: l.source.id || l.source, target_id: l.target.id || l.target, strength: l.val || 1 }))
+           }
+       };
+       const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(vosData, null, 2));
+       const link = document.createElement('a');
+       link.setAttribute("href", dataStr);
+       link.setAttribute("download", `VOSviewer_${activeExplorer}_${new Date().getTime()}.json`);
+       document.body.appendChild(link);
+       link.click();
+       link.remove();
+    });
+    
+    // Export PDF (SciVal style)
+    document.getElementById('export-pdf-btn').addEventListener('click', () => {
+       const target = document.getElementById('workspace-analytics');
+       
+       // Temporarily ensure analytics is visible for html2canvas
+       const wasHidden = target.style.display === 'none' || target.style.display === '';
+       if (wasHidden) {
+          target.style.display = 'flex';
+          target.style.position = 'absolute';
+          target.style.top = '-9999px';
+          target.style.width = '100%';
+       }
+       
+       // Wait a moment for charts to render if they were hidden
+       setTimeout(() => {
+           html2canvas(target, { backgroundColor: '#0f172a', scale: 2 }).then(canvas => {
+               const imgData = canvas.toDataURL('image/png');
+               const { jsPDF } = window.jspdf;
+               const pdf = new jsPDF('p', 'mm', 'a4');
+               
+               const pdfWidth = pdf.internal.pageSize.getWidth();
+               // calculate height proportionally based on A4 width minus margins (14mm each side)
+               const usableWidth = pdfWidth - 28;
+               const pdfHeight = (canvas.height * usableWidth) / canvas.width;
+               
+               pdf.setFontSize(18);
+               pdf.text("Neo-Bibliometrics - Laporan Analitik", 14, 20);
+               pdf.setFontSize(11);
+               pdf.text(`Dataset: ${activeExplorer.toUpperCase()} | Waktu Ekspor: ${new Date().toLocaleString()}`, 14, 28);
+               
+               pdf.addImage(imgData, 'PNG', 14, 35, usableWidth, pdfHeight);
+               pdf.save(`SciVal_Report_${activeExplorer}_${new Date().getTime()}.pdf`);
+               
+               if (wasHidden) {
+                  target.style.display = 'none';
+                  target.style.position = '';
+                  target.style.top = '';
+                  target.style.width = '';
+               }
+           });
+       }, 500);
+    });
   }
   
   // --- TAB & EXPLORER SWITCHING ---
@@ -272,12 +417,13 @@ document.addEventListener('DOMContentLoaded', () => {
     activeExplorer = explorerName;
     
     // Update active nav button
-    [navEtdBtn, navPubBtn, navKoranBtn].forEach(btn => {
+    [navEtdBtn, navPubBtn, navKoranBtn, navCustomBtn].forEach(btn => {
       if (btn) btn.classList.remove('active');
     });
     if (explorerName === 'etd' && activeTab !== 'analytics') navEtdBtn.classList.add('active');
     else if (explorerName === 'sivitas' && activeTab !== 'analytics') navPubBtn.classList.add('active');
     else if (explorerName === 'koran' && activeTab !== 'analytics') navKoranBtn.classList.add('active');
+    else if (explorerName === 'custom' && activeTab !== 'analytics') navCustomBtn.classList.add('active');
     
     // If in analytics tab, update active sub-button state
     if (activeTab === 'analytics') {
@@ -329,6 +475,18 @@ document.addEventListener('DOMContentLoaded', () => {
     subPubSection.style.display = (explorerName === 'sivitas') ? 'flex' : 'none';
     subKoranSection.style.display = (explorerName === 'koran') ? 'flex' : 'none';
     
+    // Manage Custom CSV Overlay visibility
+    if (explorerName === 'custom') {
+       csvUploadOverlay.style.display = 'flex';
+       // Empty the graph and hide analytics while on custom menu and no data
+       if (!window.customDataset || window.customDataset.length === 0) {
+           if (graphInstance) graphInstance.graphData({ nodes: [], links: [] });
+           graphNodesCount.innerText = "Nodes: 0 | Edges: 0";
+       }
+    } else {
+       csvUploadOverlay.style.display = 'none';
+    }
+    
     // Update network mode text based on explorer
     netModeAuthorBtn.innerText = (explorerName === 'koran') ? 'Jejaring Penulis Berita' : 'Co-Authorship';
     
@@ -339,7 +497,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function switchTab(tab) {
     activeTab = tab;
     if (tab === 'analytics') {
-      [navEtdBtn, navPubBtn, navKoranBtn].forEach(btn => {
+      [navEtdBtn, navPubBtn, navKoranBtn, navCustomBtn].forEach(btn => {
         if (btn) btn.classList.remove('active');
       });
       
@@ -486,9 +644,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const minYear = parseInt(filterYearMin.value);
     const maxYear = parseInt(filterYearMax.value);
     
-    filteredDocs = allDocs.filter(d => {
-      // 1. Source check
-      if (d.source !== activeExplorer) return false;
+    // Choose dataset based on active explorer
+    let dataset = (activeExplorer === 'custom' && window.customDataset) ? window.customDataset : allDocs;
+    
+    filteredDocs = dataset.filter(d => {
+      // 1. Source check (Skip source check for custom datasets)
+      if (activeExplorer !== 'custom' && d.source !== activeExplorer) return false;
       
       // 2. Year check
       if (d.year < minYear || d.year > maxYear) return false;

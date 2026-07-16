@@ -15,12 +15,17 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
   <!-- Main CSS -->
-  <link rel="stylesheet" href="styles.css?v=1.4">
+  <link rel="stylesheet" href="styles.css?v=2.0">
   
   <!-- Libraries (loaded via CDN) -->
   <script src="https://unpkg.com/force-graph"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://unpkg.com/jlouvain@1.0.0/jLouvain.js"></script>
+  
+  <!-- Export & CSV Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   
   <!-- Leaflet Map Library -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -172,6 +177,10 @@
           <i class="fa-solid fa-newspaper"></i>
           <span>Koran Explorer</span>
         </button>
+        <button id="nav-custom-btn" class="nav-item" data-source="custom" style="margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">
+          <i class="fa-solid fa-file-csv"></i>
+          <span>Custom CSV</span>
+        </button>
       </nav>
       
       <!-- Stats Overview -->
@@ -216,6 +225,16 @@
               <label for="node-freq-slider">Min. Frekuensi: <span id="freq-val">3</span></label>
               <input type="range" id="node-freq-slider" min="1" max="15" value="3">
             </div>
+            
+            <div class="export-dropdown" style="position: relative; display: inline-block; margin-right: 10px;">
+              <button id="export-btn" class="btn btn-secondary"><i class="fa-solid fa-download"></i> Export <i class="fa-solid fa-caret-down"></i></button>
+              <div id="export-menu" class="export-menu" style="display: none; position: absolute; top: 100%; right: 0; background: #1e293b; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 5px; z-index: 100; min-width: 150px; margin-top: 5px;">
+                <button id="export-png-btn" class="btn btn-tab" style="width: 100%; text-align: left; margin-bottom: 5px;"><i class="fa-regular fa-image"></i> Export PNG</button>
+                <button id="export-json-btn" class="btn btn-tab" style="width: 100%; text-align: left; margin-bottom: 5px;"><i class="fa-solid fa-code"></i> Export JSON (VOSviewer)</button>
+                <button id="export-pdf-btn" class="btn btn-tab" style="width: 100%; text-align: left; background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.3);"><i class="fa-solid fa-file-pdf"></i> PDF Report (SciVal)</button>
+              </div>
+            </div>
+            
             <button id="toggle-analytics-btn" class="btn btn-secondary" style="margin-right: 10px;"><i class="fa-solid fa-chart-pie"></i> Analitik</button>
             <button id="fit-graph-btn" class="btn btn-icon-only" title="Fit Graph"><i class="fa-solid fa-expand"></i></button>
           </div>
@@ -223,7 +242,16 @@
 
       <!-- SECTION 1: NETWORK VIEW -->
       <section id="workspace-network" class="workspace-section active">
-        <div class="network-canvas-container">
+        <!-- CUSTOM CSV UPLOAD OVERLAY -->
+        <div id="csv-upload-overlay" style="display: none; position: absolute; inset: 0; background: rgba(15, 23, 42, 0.95); z-index: 50; flex-direction: column; align-items: center; justify-content: center; border-radius: 12px; border: 2px dashed rgba(255,255,255,0.2);">
+          <i class="fa-solid fa-cloud-arrow-up" style="font-size: 4rem; color: #3b82f6; margin-bottom: 20px;"></i>
+          <h2 style="margin-bottom: 10px;">Upload Dataset Anda</h2>
+          <p style="color: #94a3b8; text-align: center; max-width: 400px; margin-bottom: 20px;">Unggah file CSV dari Scopus atau Dimensions untuk divisualisasikan secara lokal. Kolom yang dibutuhkan: Authors, Year, Title, Source title.</p>
+          <input type="file" id="csv-file-input" accept=".csv" style="display: none;">
+          <button id="trigger-upload-btn" class="btn btn-primary" style="padding: 10px 20px; font-size: 1rem;"><i class="fa-solid fa-folder-open"></i> Pilih File CSV</button>
+        </div>
+        
+        <div class="network-canvas-container" style="position: relative;">
           <div id="network-graph-canvas"></div>
           <div id="map-container" style="display: none; height: calc(100vh - 250px); width: 100%; border-radius: 12px; overflow: hidden; background-color: #0b0f19;"></div>
           <!-- Graph Legend / Info -->
@@ -319,6 +347,6 @@
   </footer>
 
   <!-- Main JavaScript Application Logic -->
-  <script src="app.js?v=1.9"></script>
+  <script src="app.js?v=2.0"></script>
 </body>
 </html>

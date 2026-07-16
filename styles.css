@@ -1059,3 +1059,33 @@ body.light-mode .icon-dark {
   border-left: 1px solid var(--border-color);
   border-bottom: 1px solid var(--border-color);
 }
+
+/* Export Dropdown Styling */
+.export-dropdown:hover .export-menu {
+  display: block !important;
+}
+
+.export-menu button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.export-menu button {
+  font-size: 13px;
+  padding: 8px 12px;
+}
+
+/* Custom CSV Upload UI */
+#csv-upload-overlay {
+  backdrop-filter: blur(10px);
+  transition: all var(--transition-normal);
+}
+
+#csv-upload-overlay.drag-over {
+  border-color: var(--accent) !important;
+  background: rgba(15, 23, 42, 0.98) !important;
+}
+
+#trigger-upload-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--neon-glow);
+}
