@@ -170,6 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
           }
           renderCharts();
        } else {
+  }
           activeTab = 'network';
           toggleAnalyticsBtn.innerHTML = '<i class="fa-solid fa-chart-pie"></i> Analitik';
           toggleAnalyticsBtn.classList.remove('active');
@@ -255,25 +256,6 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Theme Toggle
     themeToggleBtn.addEventListener('click', toggleTheme);
-  }
-  
-  // --- THEME MANAGEMENT ---
-  function toggleTheme() {
-    const body = document.body;
-    if (body.classList.contains('dark-mode')) {
-      body.classList.remove('dark-mode');
-      body.classList.add('light-mode');
-      localStorage.setItem('theme', 'light');
-    } else {
-      body.classList.remove('light-mode');
-      body.classList.add('dark-mode');
-      localStorage.setItem('theme', 'dark');
-    }
-    // Redraw charts for appropriate text contrast
-    if (activeTab === 'analytics') {
-      renderCharts();
-    }
-    
     // Custom CSV Upload Logic
     triggerUploadBtn.addEventListener('click', () => {
       csvFileInput.click();
@@ -348,30 +330,38 @@ document.addEventListener('DOMContentLoaded', () => {
            link.download = `NeoBiblio_Export_${activeExplorer}_${new Date().getTime()}.png`;
            link.href = canvas.toDataURL();
            link.click();
+       }).catch(err => {
+           console.error("Export PNG Error: ", err);
+           alert("Gagal melakukan export PNG: " + err.message);
        });
     });
     
     // Export JSON (VOSviewer format)
     document.getElementById('export-json-btn').addEventListener('click', () => {
-       if (!window.graphInstance) return alert("Grafik belum diinisialisasi");
-       const currentData = window.graphInstance.graphData();
-       if (!currentData || !currentData.nodes || currentData.nodes.length === 0) return alert("Tidak ada data untuk diekspor");
-       const vosData = {
-           network: {
-               items: currentData.nodes.map(n => ({ id: n.id, label: n.label || n.id, cluster: n.group || n.cluster || 1, weight: n.val || 1 })),
-               links: currentData.links.map(l => ({ source_id: l.source.id || l.source, target_id: l.target.id || l.target, strength: l.val || l.weight || 1 }))
-           }
-       };
-       const jsonStr = JSON.stringify(vosData, null, 2);
-       const blob = new Blob([jsonStr], { type: "application/json" });
-       const url = URL.createObjectURL(blob);
-       const link = document.createElement('a');
-       link.href = url;
-       link.download = `VOSviewer_${activeExplorer}_${new Date().getTime()}.json`;
-       document.body.appendChild(link);
-       link.click();
-       link.remove();
-       URL.revokeObjectURL(url);
+       try {
+           if (!window.graphInstance) return alert("Grafik belum diinisialisasi");
+           const currentData = window.graphInstance.graphData();
+           if (!currentData || !currentData.nodes || currentData.nodes.length === 0) return alert("Tidak ada data untuk diekspor");
+           const vosData = {
+               network: {
+                   items: currentData.nodes.map(n => ({ id: n.id, label: n.label || n.id, cluster: n.group || n.cluster || 1, weight: n.val || 1 })),
+                   links: currentData.links.map(l => ({ source_id: l.source ? (l.source.id || l.source) : l.source, target_id: l.target ? (l.target.id || l.target) : l.target, strength: l.val || l.weight || 1 }))
+               }
+           };
+           const jsonStr = JSON.stringify(vosData, null, 2);
+           const blob = new Blob([jsonStr], { type: "application/json" });
+           const url = URL.createObjectURL(blob);
+           const link = document.createElement('a');
+           link.href = url;
+           link.download = `VOSviewer_${activeExplorer}_${new Date().getTime()}.json`;
+           document.body.appendChild(link);
+           link.click();
+           link.remove();
+           URL.revokeObjectURL(url);
+       } catch(err) {
+           console.error("Export JSON Error: ", err);
+           alert("Gagal melakukan export JSON: " + err.message);
+       }
     });
     
     // Export PDF (SciVal style)
@@ -413,9 +403,37 @@ document.addEventListener('DOMContentLoaded', () => {
                   target.style.top = '';
                   target.style.width = '';
                }
-           });
+            }).catch(err => {
+                console.error("Export PDF Error: ", err);
+                alert("Gagal melakukan export PDF: " + err.message);
+                if (wasHidden) {
+                   target.style.display = 'none';
+                   target.style.position = '';
+                   target.style.top = '';
+                   target.style.width = '';
+                }
+            });
        }, 500);
     });
+  }
+  
+  // --- THEME MANAGEMENT ---
+  function toggleTheme() {
+    const body = document.body;
+    if (body.classList.contains('dark-mode')) {
+      body.classList.remove('dark-mode');
+      body.classList.add('light-mode');
+      localStorage.setItem('theme', 'light');
+    } else {
+      body.classList.remove('light-mode');
+      body.classList.add('dark-mode');
+      localStorage.setItem('theme', 'dark');
+    }
+    // Redraw charts for appropriate text contrast
+    if (activeTab === 'analytics') {
+      renderCharts();
+    }
+    
   }
   
   // --- TAB & EXPLORER SWITCHING ---
