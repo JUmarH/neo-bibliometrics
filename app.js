@@ -341,10 +341,24 @@ document.addEventListener('DOMContentLoaded', () => {
            if (!window.graphInstance) return alert("Grafik belum diinisialisasi");
            const currentData = window.graphInstance.graphData();
            if (!currentData || !currentData.nodes || currentData.nodes.length === 0) return alert("Tidak ada data untuk diekspor");
+           const idMap = new Map();
+           let currentId = 1;
+           const items = currentData.nodes.map(n => {
+               idMap.set(n.id, currentId);
+               const item = { id: currentId, label: n.name || n.id, cluster: (n.cluster || 0) + 1, weight: n.val || n.count || 1 };
+               currentId++;
+               return item;
+           });
+           const links = currentData.links.map(l => {
+               const sId = l.source.id || l.source;
+               const tId = l.target.id || l.target;
+               return { source_id: idMap.get(sId), target_id: idMap.get(tId), strength: l.weight || l.val || 1 };
+           }).filter(l => l.source_id && l.target_id);
+           
            const vosData = {
                network: {
-                   items: currentData.nodes.map(n => ({ id: n.id, label: n.label || n.id, cluster: n.group || n.cluster || 1, weight: n.val || 1 })),
-                   links: currentData.links.map(l => ({ source_id: l.source ? (l.source.id || l.source) : l.source, target_id: l.target ? (l.target.id || l.target) : l.target, strength: l.val || l.weight || 1 }))
+                   items: items,
+                   links: links
                }
            };
            const jsonStr = JSON.stringify(vosData, null, 2);
@@ -364,55 +378,85 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     // Export PDF (SciVal style)
-    document.getElementById('export-pdf-btn').addEventListener('click', () => {
-       const target = document.getElementById('workspace-analytics');
-       
-       // Temporarily ensure analytics is visible for html2canvas
-       const wasHidden = target.style.display === 'none' || target.style.display === '';
-       if (wasHidden) {
-          target.style.display = 'flex';
-          target.style.position = 'absolute';
-          target.style.top = '-9999px';
-          target.style.width = '100%';
-       }
-       
-       // Wait a moment for charts to render if they were hidden
-       setTimeout(() => {
-           html2canvas(target, { backgroundColor: '#0f172a', scale: 2 }).then(canvas => {
-               const imgData = canvas.toDataURL('image/png');
-               const { jsPDF } = window.jspdf;
-               const pdf = new jsPDF('p', 'mm', 'a4');
-               
-               const pdfWidth = pdf.internal.pageSize.getWidth();
-               // calculate height proportionally based on A4 width minus margins (14mm each side)
-               const usableWidth = pdfWidth - 28;
-               const pdfHeight = (canvas.height * usableWidth) / canvas.width;
-               
-               pdf.setFontSize(18);
-               pdf.text("Neo-Bibliometrics - Laporan Analitik", 14, 20);
-               pdf.setFontSize(11);
-               pdf.text(`Dataset: ${activeExplorer.toUpperCase()} | Waktu Ekspor: ${new Date().toLocaleString()}`, 14, 28);
-               
-               pdf.addImage(imgData, 'PNG', 14, 35, usableWidth, pdfHeight);
-               pdf.save(`SciVal_Report_${activeExplorer}_${new Date().getTime()}.pdf`);
-               
-               if (wasHidden) {
-                  target.style.display = 'none';
-                  target.style.position = '';
-                  target.style.top = '';
-                  target.style.width = '';
+    document.getElementById('export-pdf-btn').addEventListener('click', async () => {
+       try {
+           const { jsPDF } = window.jspdf;
+           const pdf = new jsPDF('p', 'mm', 'a4');
+           const pageWidth = pdf.internal.pageSize.getWidth();
+           const pageHeight = pdf.internal.pageSize.getHeight();
+           
+           // Cover Page
+           pdf.setFillColor(15, 23, 42); // Dark slate
+           pdf.rect(0, 0, pageWidth, pageHeight, 'F');
+           
+           pdf.setTextColor(237, 239, 245);
+           pdf.setFontSize(28);
+           pdf.text("Neo-Bibliometrics", 20, 50);
+           pdf.setFontSize(20);
+           pdf.setTextColor(232, 163, 61); // Accent gold
+           pdf.text("Laporan Analitik Komprehensif", 20, 65);
+           
+           pdf.setTextColor(237, 239, 245);
+           pdf.setFontSize(12);
+           pdf.text(`Dataset: ${activeExplorer.toUpperCase()}`, 20, 100);
+           pdf.text(`Total Dokumen: ${filteredDocs.length}`, 20, 110);
+           pdf.text(`Waktu Ekspor: ${new Date().toLocaleString()}`, 20, 120);
+           
+           // Force charts to render if hidden
+           const target = document.getElementById('workspace-analytics');
+           const wasHidden = target.style.display === 'none' || target.style.display === '';
+           if (wasHidden) {
+              target.style.display = 'flex';
+              target.style.position = 'absolute';
+              target.style.top = '-9999px';
+              renderCharts(); // ensure charts are drawn
+           }
+           
+           // Wait for chart animations
+           await new Promise(resolve => setTimeout(resolve, 500));
+           
+           const chartConfigs = [
+               { id: 'chart-trend', title: 'Tren Publikasi per Tahun' },
+               { id: 'chart-sdg', title: 'Distribusi Sustainable Development Goals (SDG)' },
+               { id: 'chart-depts', title: 'Sebaran Departemen / Prodi' },
+               { id: 'chart-publisher', title: 'Top Publisher / Sumber Berita' }
+           ];
+           
+           for (let i = 0; i < chartConfigs.length; i++) {
+               const canvas = document.getElementById(chartConfigs[i].id);
+               if (canvas) {
+                   pdf.addPage();
+                   // Header
+                   pdf.setFillColor(15, 23, 42);
+                   pdf.rect(0, 0, pageWidth, 30, 'F');
+                   pdf.setTextColor(255, 255, 255);
+                   pdf.setFontSize(16);
+                   pdf.text(chartConfigs[i].title, 20, 20);
+                   
+                   // Set white background for page
+                   pdf.setFillColor(255, 255, 255);
+                   pdf.rect(0, 30, pageWidth, pageHeight - 30, 'F');
+                   
+                   // Chart image
+                   const imgData = canvas.toDataURL('image/png', 1.0);
+                   const usableWidth = pageWidth - 40;
+                   const imgHeight = (canvas.height * usableWidth) / canvas.width;
+                   
+                   pdf.addImage(imgData, 'PNG', 20, 50, usableWidth, imgHeight);
                }
-            }).catch(err => {
-                console.error("Export PDF Error: ", err);
-                alert("Gagal melakukan export PDF: " + err.message);
-                if (wasHidden) {
-                   target.style.display = 'none';
-                   target.style.position = '';
-                   target.style.top = '';
-                   target.style.width = '';
-                }
-            });
-       }, 500);
+           }
+           
+           pdf.save(`SciVal_Report_${activeExplorer}_${new Date().getTime()}.pdf`);
+           
+           if (wasHidden) {
+              target.style.display = 'none';
+              target.style.position = '';
+              target.style.top = '';
+           }
+       } catch(err) {
+           console.error("Export PDF Error: ", err);
+           alert("Gagal melakukan export PDF: " + err.message);
+       }
     });
   }
   
@@ -911,13 +955,115 @@ document.addEventListener('DOMContentLoaded', () => {
       leafletMap.invalidateSize();
     }, 100);
   }
-  
+  const VOSVIEWER_COLORS = ['#5EC8D8','#E8A33D','#C65BA6','#7FBF6B','#E8615A','#8C82E0','#F2C14E','#4FA8A0'];
+
+  function labelPropagation(nodeIds, edgesRaw) {
+    const labels = {};
+    nodeIds.forEach(id => labels[id] = id);
+    const neighborMap = {};
+    nodeIds.forEach(id => neighborMap[id] = []);
+    edgesRaw.forEach(e => {
+        if (neighborMap[e.source] && neighborMap[e.target]) {
+            neighborMap[e.source].push({ id: e.target, w: e.weight });
+            neighborMap[e.target].push({ id: e.source, w: e.weight });
+        }
+    });
+    for (let iter = 0; iter < 20; iter++) {
+        let changed = false;
+        const order = [...nodeIds].sort(() => Math.random() - 0.5);
+        order.forEach(id => {
+            const neigh = neighborMap[id];
+            if (!neigh || neigh.length === 0) return;
+            const scores = {};
+            neigh.forEach(n => {
+                const l = labels[n.id];
+                scores[l] = (scores[l] || 0) + n.w;
+            });
+            let best = labels[id], bestScore = -1;
+            Object.keys(scores).forEach(l => {
+                if (scores[l] > bestScore || (scores[l] === bestScore && l < best)) {
+                    best = l;
+                    bestScore = scores[l];
+                }
+            });
+            if (best !== labels[id]) {
+                labels[id] = best;
+                changed = true;
+            }
+        });
+        if (!changed) break;
+    }
+    return labels;
+  }
+  function renderVOSLegend(graphData) {
+    const container = document.getElementById('vos-legend-container');
+    const list = document.getElementById('vos-legend-list');
+    if (!clusterMode) {
+      container.style.display = 'none';
+      return;
+    }
+    container.style.display = 'block';
+    list.innerHTML = '';
+    
+    const byCluster = {};
+    graphData.nodes.forEach(n => {
+      if (!byCluster[n.cluster]) byCluster[n.cluster] = [];
+      byCluster[n.cluster].push(n);
+    });
+    
+    Object.keys(byCluster).sort((a,b)=>a-b).forEach(c => {
+      const items = byCluster[c].sort((a,b)=>b.count-a.count);
+      const top = items[0];
+      const color = VOSVIEWER_COLORS[c % VOSVIEWER_COLORS.length];
+      
+      const el = document.createElement('div');
+      el.style.display = 'flex';
+      el.style.alignItems = 'center';
+      el.style.gap = '8px';
+      el.style.fontSize = '12px';
+      el.style.color = '#cbd5e1';
+      el.style.cursor = 'pointer';
+      el.style.padding = '4px';
+      el.style.borderRadius = '4px';
+      
+      el.innerHTML = `
+        <span style="width: 10px; height: 10px; border-radius: 50%; background: ${color}; box-shadow: 0 0 4px ${color}; flex-shrink: 0;"></span>
+        <span style="flex-grow: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${top.name}">Klaster ${+c+1} &mdash; <i style="color:#64748b;">${top.name}</i></span>
+        <span style="font-family: monospace; color: #64748b; font-size: 10px;">${items.length}</span>
+      `;
+      
+      el.addEventListener('click', () => {
+         if (window.isolatedCluster === +c) {
+             window.isolatedCluster = null; // un-isolate
+         } else {
+             window.isolatedCluster = +c;
+         }
+         // Dim logic for list items
+         Array.from(list.children).forEach((child, i) => {
+             if (window.isolatedCluster === null || window.isolatedCluster === i) {
+                 child.style.opacity = '1';
+             } else {
+                 child.style.opacity = '0.3';
+             }
+         });
+         // Graph handles styling natively through canvas opacity! No need to manually update graph nodes, just trigger re-render if needed, but force-graph re-renders on zoom/drag/hover. Let's trigger a dummy hover to force re-render.
+         if (window.graphInstance) {
+            // Slight hack to trigger re-render
+            window.graphInstance.zoom(window.graphInstance.zoom() + 0.0001);
+         }
+      });
+      list.appendChild(el);
+    });
+  }
+
   // --- NETWORK GRAPH RENDERING (force-graph) ---
   function renderNetwork() {
     const minFreq = parseInt(nodeFreqSlider.value);
     const canvasContainer = document.getElementById('network-graph-canvas');
     canvasContainer.innerHTML = ''; // clear
     
+    window.hoverNode = null;
+    window.isolatedCluster = null;
     let graphData = { nodes: [], links: [] };
     
     // Show limit warning if dataset size is massive
@@ -1094,23 +1240,29 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     
-    // Calculate VOSviewer Clustering (Louvain)
-    if (typeof jLouvain !== 'undefined') {
-        const nodeIds = graphData.nodes.map(n => n.id);
-        const edgeData = graphData.links.map(l => ({ source: l.source, target: l.target, weight: l.weight }));
-        try {
-            const community = jLouvain().nodes(nodeIds).edges(edgeData);
-            const result = community();
-            graphData.nodes.forEach(n => {
-                n.cluster = result[n.id] || 0;
-            });
-        } catch(e) {
-            console.error('Clustering error:', e);
-            graphData.nodes.forEach(n => n.cluster = 0);
-        }
-    } else {
+    // Calculate VOSviewer Clustering (Label Propagation)
+    const nodeIds = graphData.nodes.map(n => n.id);
+    const edgeData = graphData.links.map(l => ({ source: l.source, target: l.target, weight: l.weight }));
+    try {
+        const result = labelPropagation(nodeIds, edgeData);
+        const clusterSizes = {};
+        Object.values(result).forEach(c => clusterSizes[c] = (clusterSizes[c]||0)+1);
+        const sortedClusterIds = Object.keys(clusterSizes).sort((a,b)=> clusterSizes[b]-clusterSizes[a]);
+        const clusterIndexMap = {};
+        sortedClusterIds.forEach((c,i) => clusterIndexMap[c] = i);
+        
+        graphData.nodes.forEach(n => {
+            n.cluster = clusterIndexMap[result[n.id]] !== undefined ? clusterIndexMap[result[n.id]] : 0;
+        });
+        window.currentClusterCount = sortedClusterIds.length;
+    } catch(e) {
+        console.error('Clustering error:', e);
         graphData.nodes.forEach(n => n.cluster = 0);
+        window.currentClusterCount = 0;
     }
+    
+    // Render Sidebar Legend
+    renderVOSLegend(graphData);
     
     // Theme Colors
     const isDark = document.body.classList.contains('dark-mode');
@@ -1158,47 +1310,104 @@ document.addEventListener('DOMContentLoaded', () => {
          return sourceColors[node.source] || '#64748b';
       })
       .linkLabel(link => `Kolaborasi: ${link.weight} kali`)
-      .linkColor(() => linkColor)
-      .linkWidth(link => Math.min(6, Math.sqrt(link.weight)))
+      .linkColor(link => {
+          const s = link.source.id || link.source;
+          const t = link.target.id || link.target;
+          const hn = window.hoverNode ? window.hoverNode.id : null;
+          if (hn && (s === hn || t === hn)) return linkHoverColor;
+          if (hn) return 'rgba(148, 163, 184, 0.04)'; // dim
+          
+          if (window.isolatedCluster !== null) {
+              const sc = graphData.nodes.find(n => n.id === s)?.cluster;
+              const tc = graphData.nodes.find(n => n.id === t)?.cluster;
+              if (sc === window.isolatedCluster && tc === window.isolatedCluster) return isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)';
+              return 'rgba(148, 163, 184, 0.03)';
+          }
+          return linkColor;
+      })
+      .linkWidth(link => {
+          const s = link.source.id || link.source;
+          const t = link.target.id || link.target;
+          const hn = window.hoverNode ? window.hoverNode.id : null;
+          if (hn && (s === hn || t === hn)) return Math.min(8, Math.sqrt(link.weight) * 2);
+          return Math.min(6, Math.sqrt(link.weight));
+      })
       // Custom node draw (draw text label alongside/inside the node)
       .nodeCanvasObject((node, ctx, globalScale) => {
+        // Opacity handling for hover/isolate
+        let opacity = 1;
+        const hn = window.hoverNode;
+        if (hn && hn.id !== node.id) {
+           const isNeighbor = graphData.links.some(l => 
+               ((l.source.id||l.source) === node.id && (l.target.id||l.target) === hn.id) ||
+               ((l.target.id||l.target) === node.id && (l.source.id||l.source) === hn.id)
+           );
+           if (!isNeighbor) opacity = 0.12;
+        } else if (window.isolatedCluster !== null && node.cluster !== window.isolatedCluster) {
+           opacity = 0.12;
+        }
+
         const label = node.name;
-        const fontSize = Math.max(3, 12 / globalScale);
-        ctx.font = `${fontSize}px Inter`;
-        
-        // Draw Dot
+        // Dynamic VOSviewer font size: scales with node radius!
         const r = Math.max(2, Math.sqrt(node.val) * 1.5);
+        const fontSize = Math.max(9, Math.min(13, r * 0.55)) / globalScale;
+        
+        ctx.globalAlpha = opacity;
+        
+        // Draw Radial Gradient Glow Dot
         ctx.beginPath();
         ctx.arc(node.x, node.y, r, 0, 2 * Math.PI, false);
+        
+        let hexColor = '#64748b';
         if (clusterMode) {
-             const clusterColors = ['#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#42d4f4', '#f032e6', '#bfef45', '#fabed4', '#469990', '#dcbeff', '#9A6324', '#fffac8', '#800000', '#aaffc3', '#808000', '#ffd8b1', '#000075', '#a9a9a9'];
-             ctx.fillStyle = clusterColors[node.cluster % clusterColors.length];
+             hexColor = VOSVIEWER_COLORS[node.cluster % VOSVIEWER_COLORS.length];
         } else {
-             let c = sourceColors[node.source] || '#64748b';
+             hexColor = sourceColors[node.source] || '#64748b';
              if (node.source === 'etd' && node.role) {
-                if (node.role === 'S1') c = sourceColors.etd_s1;
-                else if (node.role === 'S2') c = sourceColors.etd_s2;
-                else if (node.role === 'S3') c = sourceColors.etd_s3;
-                else if (node.role === 'Dosen') c = sourceColors.etd_dosen;
+                if (node.role === 'S1') hexColor = sourceColors.etd_s1;
+                else if (node.role === 'S2') hexColor = sourceColors.etd_s2;
+                else if (node.role === 'S3') hexColor = sourceColors.etd_s3;
+                else if (node.role === 'Dosen') hexColor = sourceColors.etd_dosen;
              }
-             ctx.fillStyle = c;
         }
+        
+        // Convert hex to rgb for gradient
+        let rgb = '100,116,139'; // fallback
+        if (hexColor.startsWith('#')) {
+            const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hexColor);
+            if(result) rgb = `${parseInt(result[1], 16)},${parseInt(result[2], 16)},${parseInt(result[3], 16)}`;
+        }
+        
+        const grad = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, r);
+        grad.addColorStop(0, `rgba(${rgb}, 1)`);
+        grad.addColorStop(1, `rgba(${rgb}, 0.55)`);
+        
+        ctx.fillStyle = grad;
         ctx.fill();
+        ctx.lineWidth = 1.2;
+        ctx.strokeStyle = `rgba(${rgb}, 1)`;
+        ctx.stroke();
         
         // Draw Glowing border if zoomed in
         if (globalScale > 1.5) {
-          ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.2)';
-          ctx.lineWidth = 0.5;
+          ctx.strokeStyle = isDark ? `rgba(255,255,255,0.4)` : `rgba(0,0,0,0.2)`;
+          ctx.lineWidth = 0.5 / globalScale;
           ctx.stroke();
         }
         
         // Draw Text Label
+        ctx.font = `${fontSize}px 'IBM Plex Sans', system-ui, sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = nodeTextColor;
         
         // Draw text slightly offset below dot
         ctx.fillText(label, node.x, node.y + r + fontSize + 0.5);
+        ctx.globalAlpha = 1; // reset
+      })
+      .onNodeHover(node => {
+        canvasContainer.style.cursor = node ? 'pointer' : null;
+        window.hoverNode = node || null;
       })
       .onNodeClick(node => {
         openResearchRabbitPanel(node.name, networkMode === 'author' ? 'author' : 'keyword');

@@ -38,7 +38,7 @@
     <div class="logo-area">
       <div class="logo-icon"><i class="fa-solid fa-circle-nodes"></i></div>
       <div class="logo-text">
-        <h1>Neo-Bibliometrics</h1>
+        <h1>Neo-Bibliometrics <span style="font-size: 14px; font-weight: normal; color: #8892a8; margin-left: 8px;">v2.7</span></h1>
         <span>FISIPOL UGM Explorer</span>
       </div>
     </div>
@@ -157,6 +157,14 @@
     </div>
 
     <button id="reset-filters-btn" class="btn btn-secondary"><i class="fa-solid fa-rotate-left"></i> Reset</button>
+    
+    <!-- VOSviewer Cluster Legend -->
+    <div class="filter-group" id="vos-legend-container" style="display: none; margin-top: 20px; background: rgba(15, 23, 42, 0.5); padding: 10px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+      <label style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #8892a8; margin-bottom: 8px;"><i class="fa-solid fa-layer-group"></i> Klaster <span style="text-transform: none; font-size: 9px;">(Klik isolasi)</span></label>
+      <div id="vos-legend-list" style="display: flex; flex-direction: column; gap: 4px; max-height: 200px; overflow-y: auto;">
+        <!-- Filled by JS -->
+      </div>
+    </div>
   </nav>
 
   <!-- Main Content Layout -->
@@ -264,7 +272,13 @@
             </div>
             <div class="legend-item" id="legend-sivitas"><span class="color-dot src-sivitas"></span> Publikasi</div>
             <div class="legend-item" id="legend-koran"><span class="color-dot src-koran"></span> Koran</div>
-            <div class="legend-item text-muted" id="graph-nodes-count">Nodes: 0 | Edges: 0</div>
+          <div class="legend-item text-muted" id="graph-nodes-count">Nodes: 0 | Edges: 0</div>
+          </div>
+          
+          <!-- Watermark Logo -->
+          <div class="canvas-watermark" style="position: absolute; bottom: 20px; right: 20px; pointer-events: none; opacity: 0.35; z-index: 10; display: flex; flex-direction: column; align-items: flex-end; user-select: none;">
+            <div style="font-family: 'Times New Roman', serif; font-size: 24px; font-weight: bold; color: #EDEFF5; letter-spacing: 2px; text-shadow: 0 2px 4px rgba(0,0,0,0.8);">DIGILIB FISIPOL</div>
+            <div style="font-family: 'Inter', sans-serif; font-size: 11px; color: #8892A8; letter-spacing: 4px; text-transform: uppercase;">Constellation of Research</div>
           </div>
           
           <!-- Limit Warning Badge -->
